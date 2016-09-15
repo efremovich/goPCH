@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 type PostParams struct {
@@ -23,29 +24,61 @@ type PostParams struct {
 	tmpFile  string
 	response []byte
 	filePath string
+	nodePath string
+}
+
+func (p *PostParams) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	postParams := new(PostParams)
+	postParams.nodePath = "/storage/node" + r.Host[len(r.Host)-1:]
+	handler(w, r, postParams)
 }
 
 func main() {
-	http.HandleFunc("/", handler)
+	// http.HandleFunc("/", handler)
 
-	// wg := &sync.WaitGroup{}
-	// wg.Add(1)
-	// go func() {
-	// 	log.Fatal(http.ListenAndServe(":8081", &Bar{}))
-	// 	wg.Done()
-	// }()
-	// wg.Add(1)
-	// go func() {
-	// 	log.Fatal(http.ListenAndServe(":8080", &Foo{}))
-	// 	wg.Done()
-	// }()
-	// wg.Wait()
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		log.Fatal(http.ListenAndServe(":9091", &PostParams{}))
+		wg.Done()
+	}()
+	wg.Add(1)
+	go func() {
+		log.Fatal(http.ListenAndServe(":9092", &PostParams{}))
+		wg.Done()
+	}()
+	wg.Add(1)
+	go func() {
+		log.Fatal(http.ListenAndServe(":9093", &PostParams{}))
+		wg.Done()
+	}()
+	wg.Add(1)
+	go func() {
+		log.Fatal(http.ListenAndServe(":9094", &PostParams{}))
+		wg.Done()
+	}()
+	wg.Add(1)
+	go func() {
+		log.Fatal(http.ListenAndServe(":9095", &PostParams{}))
+		wg.Done()
+	}()
+	wg.Add(1)
+	go func() {
+		log.Fatal(http.ListenAndServe(":9096", &PostParams{}))
+		wg.Done()
+	}()
+	wg.Add(1)
+	go func() {
+		log.Fatal(http.ListenAndServe(":9097", &PostParams{}))
+		wg.Done()
+	}()
+	wg.Wait()
 	//http.HandleFunc("/video-upload", upload)
-	log.Fatal(http.ListenAndServe(":9090", nil))
+	//log.Fatal(http.ListenAndServe(":9090-9095", nil))
 
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
+func handler(w http.ResponseWriter, r *http.Request, postParams *PostParams) {
 	w.Header().Set("Access-Control-Allow-Origin", r.Host)
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -53,13 +86,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(204)
 	} else if r.Method == "POST" {
-		postParams := saveTempDataOnNode(r)
+		saveTempDataOnNode(r, postParams)
 
 		getPathFromService(r, postParams)
+
 		if _, err := w.Write(postParams.response); err != nil {
 			fmt.Printf("WriteFile failed %q\n", err)
 		}
-		if err := copyFile(postParams.tmpFile, "D:/Go/src/goPCH"+postParams.filePath); err != nil {
+		if err := copyFile(postParams.tmpFile, postParams.nodePath+postParams.filePath); err != nil {
 			fmt.Printf("CopyFile failed %q\n", err)
 		}
 	}
@@ -85,8 +119,8 @@ func copyFile(src, dst string) (err error) {
 	return nil
 }
 
-func saveTempDataOnNode(msg *http.Request) *PostParams {
-	postParams := new(PostParams)
+func saveTempDataOnNode(msg *http.Request, postParams *PostParams) {
+
 	mediaType, params, err := mime.ParseMediaType(msg.Header.Get("Content-Type"))
 	if err != nil {
 		log.Fatal(err)
@@ -98,7 +132,7 @@ func saveTempDataOnNode(msg *http.Request) *PostParams {
 			p, err := mr.NextPart()
 			if err == io.EOF {
 				postParams.err = err
-				return postParams
+
 			}
 			// if err != nil {
 			// 	log.Println(err)
@@ -118,7 +152,6 @@ func saveTempDataOnNode(msg *http.Request) *PostParams {
 
 		}
 	}
-	return postParams
 }
 
 func getPathFromService(r *http.Request, postParams *PostParams) {

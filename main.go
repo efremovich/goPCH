@@ -29,57 +29,43 @@ type PostParams struct {
 
 func (p *PostParams) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	postParams := new(PostParams)
-	postParams.nodePath = "/storage/node" + r.Host[len(r.Host)-1:]
+	postParams.nodePath = "/storage/data" + r.Host[len(r.Host)-1:]
+	fmt.Printf("start on port:%v", r.Host)
 	handler(w, r, postParams)
 }
 
 func main() {
 	// http.HandleFunc("/", handler)
-
+	cert := "./prosushka.crt"
+	key := "./prosushka.key"
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		log.Fatal(http.ListenAndServe(":9091", &PostParams{}))
+		log.Fatal(http.ListenAndServeTLS(":9091", cert, key, &PostParams{}))
 		wg.Done()
 	}()
 	wg.Add(1)
 	go func() {
-		log.Fatal(http.ListenAndServe(":9092", &PostParams{}))
+		log.Fatal(http.ListenAndServeTLS(":9092", cert, key, &PostParams{}))
 		wg.Done()
 	}()
 	wg.Add(1)
 	go func() {
-		log.Fatal(http.ListenAndServe(":9093", &PostParams{}))
+		log.Fatal(http.ListenAndServeTLS(":9093", cert, key, &PostParams{}))
 		wg.Done()
 	}()
 	wg.Add(1)
 	go func() {
-		log.Fatal(http.ListenAndServe(":9094", &PostParams{}))
-		wg.Done()
-	}()
-	wg.Add(1)
-	go func() {
-		log.Fatal(http.ListenAndServe(":9095", &PostParams{}))
-		wg.Done()
-	}()
-	wg.Add(1)
-	go func() {
-		log.Fatal(http.ListenAndServe(":9096", &PostParams{}))
-		wg.Done()
-	}()
-	wg.Add(1)
-	go func() {
-		log.Fatal(http.ListenAndServe(":9097", &PostParams{}))
+		log.Fatal(http.ListenAndServeTLS(":9094", cert, key, &PostParams{}))
 		wg.Done()
 	}()
 	wg.Wait()
-	//http.HandleFunc("/video-upload", upload)
-	//log.Fatal(http.ListenAndServe(":9090-9095", nil))
 
 }
 
 func handler(w http.ResponseWriter, r *http.Request, postParams *PostParams) {
-	w.Header().Set("Access-Control-Allow-Origin", r.Host)
+	log.Printf("host:%v - metod:%v\n", r.Host, r.Method)
+	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Accept,Authorization,Cache-Control,Content-Type,DNT,If-Modified-Since,Keep-Alive,Origin,User-Agent,X-Mx-ReqToken,X-Requested-With")
@@ -101,7 +87,7 @@ func handler(w http.ResponseWriter, r *http.Request, postParams *PostParams) {
 }
 
 func copyFile(src, dst string) (err error) {
-
+	log.Printf("dst:%v\n", dst)
 	fName := filepath.Dir(dst)
 	if err := os.MkdirAll(fName, 0644); err != nil {
 		fmt.Println(err)
@@ -132,7 +118,7 @@ func saveTempDataOnNode(msg *http.Request, postParams *PostParams) {
 			p, err := mr.NextPart()
 			if err == io.EOF {
 				postParams.err = err
-
+				return
 			}
 			// if err != nil {
 			// 	log.Println(err)
@@ -146,7 +132,7 @@ func saveTempDataOnNode(msg *http.Request, postParams *PostParams) {
 				header := strings.Split(p.Header.Get("Content-Disposition"), "; ")
 				postParams.fileName = strings.Trim(strings.Trim(header[2], "filename="), "\"")
 				postParams.fileType = p.Header.Get("Content-Type")
-
+				log.Printf("get file:%v\n", postParams.fileName)
 				upload(postParams.fileName, slurp, postParams)
 			}
 
@@ -155,15 +141,14 @@ func saveTempDataOnNode(msg *http.Request, postParams *PostParams) {
 }
 
 func getPathFromService(r *http.Request, postParams *PostParams) {
-	client := GetClient()
+	client := GetClientTLS()
 
 	params := url.Values{}
 	params.Set("name", postParams.fileName)
 	params.Add("size", string(postParams.fileSize))
 	params.Add("type", postParams.fileType)
 
-	// urlStr := "http://192.168.1.14" + r.URL.Path + "?name=" + postParams.filename + "&size=" + string(postParams.filesize) + "&type=" + postParams.filetype
-	urlStr := "http://192.168.1.14" + r.URL.Path + "?" + params.Encode()
+	urlStr := r.Header.Get("Origin") + r.URL.Path + "?" + params.Encode()
 	req, err := http.NewRequest("POST", urlStr, nil)
 
 	if err != nil {
@@ -174,6 +159,7 @@ func getPathFromService(r *http.Request, postParams *PostParams) {
 	rawstr := strings.Split(r.URL.RawQuery, "=")
 	cookie := http.Cookie{Name: rawstr[0], Value: rawstr[1]}
 	req.AddCookie(&cookie)
+	log.Printf("postAdr:%v\n", urlStr)
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
@@ -200,5 +186,5 @@ func upload(filename string, data []byte, postParams *PostParams) {
 
 	postParams.fileSize = size
 	postParams.tmpFile = tmpfile.Name()
-
+	log.Printf("tmp file:%v\n", postParams.tmpFile)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"errors"
 	"log"
 	"net/http"
@@ -37,6 +38,30 @@ func GetClient() http.Client {
 	client := http.Client{
 		Jar:           jar,
 		CheckRedirect: redir,
+	}
+	return client
+
+}
+
+//GetClient - инициализация клиента
+func GetClientTLS() http.Client {
+	options := cookiejar.Options{
+		PublicSuffixList: publicsuffix.List,
+	}
+	jar, err := cookiejar.New(&options)
+	if err != nil {
+		log.Fatal(err)
+	}
+	redir := redirectPolicyFunc
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	client := http.Client{
+		Jar:           jar,
+		CheckRedirect: redir,
+		Transport:     tr,
 	}
 	return client
 

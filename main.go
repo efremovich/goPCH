@@ -36,8 +36,8 @@ func (p *PostParams) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	// http.HandleFunc("/", handler)
-	cert := "./prosushka.crt"
-	key := "./prosushka.key"
+	cert := "/storage/prosushka.crt"
+	key := "/storage/prosushka.key"
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func() {

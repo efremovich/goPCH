@@ -89,7 +89,7 @@ func handler(w http.ResponseWriter, r *http.Request, postParams *PostParams) {
 func copyFile(src, dst string) (err error) {
 	log.Printf("dst:%v\n", dst)
 	fName := filepath.Dir(dst)
-	if err := os.MkdirAll(fName, 0644); err != nil {
+	if err := os.MkdirAll(fName, 0777); err != nil {
 		fmt.Println(err)
 	}
 	// Read all content of src to data
@@ -99,7 +99,7 @@ func copyFile(src, dst string) (err error) {
 	}
 
 	// Write data to dst
-	if err = ioutil.WriteFile(dst, data, 0644); err != nil {
+	if err = ioutil.WriteFile(dst, data, 0777); err != nil {
 		return err
 	}
 	return nil

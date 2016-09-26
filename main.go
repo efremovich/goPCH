@@ -102,6 +102,11 @@ func copyFile(src, dst string) (err error) {
 	if err = ioutil.WriteFile(dst, data, 0777); err != nil {
 		return err
 	}
+
+	//delete data from tmp
+	if err = os.Remove(src); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -145,7 +150,7 @@ func getPathFromService(r *http.Request, postParams *PostParams) {
 
 	params := url.Values{}
 	params.Set("name", postParams.fileName)
-	params.Add("size", string(postParams.fileSize))
+	params.Add("size", strconv.Itoa(postParams.fileSize))
 	params.Add("type", postParams.fileType)
 
 	urlStr := r.Header.Get("Origin") + r.URL.Path + "?" + params.Encode()
@@ -159,12 +164,17 @@ func getPathFromService(r *http.Request, postParams *PostParams) {
 	rawstr := strings.Split(r.URL.RawQuery, "=")
 	cookie := http.Cookie{Name: rawstr[0], Value: rawstr[1]}
 	req.AddCookie(&cookie)
+
+	req.Header.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36")
+	req.Header.Set("Accept-Encoding", "deflate")
+
 	log.Printf("postAdr:%v\n", urlStr)
 	resp, err := client.Do(req)
 	if err != nil {
 		fmt.Println(err)
 	}
 	body, _ := ioutil.ReadAll(resp.Body)
+	log.Printf("%v", string(body))
 	qunt := body[:4]
 	i, err := strconv.Atoi(string(qunt))
 	if err != nil {
